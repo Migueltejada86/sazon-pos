@@ -2,52 +2,38 @@
 
 Prototipo de punto de venta para **El Descanso** (y el segundo local, cuentas separadas).
 
-Demo en GitHub Pages:
+Repo: https://github.com/Migueltejada86/sazon-pos
 
-- Caja / escritorio: https://migueltejada86.github.io/sazon-pos/
-- App mozo (celular): https://migueltejada86.github.io/sazon-pos/mozo.html
+Demo (cuando Pages esté activo):
 
-Marca propia Sazón. No usa Fudo.
+- Caja: https://migueltejada86.github.io/sazon-pos/
+- Mozo: https://migueltejada86.github.io/sazon-pos/mozo.html
+
+## Activar GitHub Pages
+
+1. Repo → **Settings** → **Pages**.
+2. Source: **GitHub Actions** (hay workflow `pages.yml`) **o** Branch `main` / folder `/ (root)`.
+3. Esperá 1 minuto.
+
+## Subir el prototipo desde la PC
+
+El HTML grande vive en el proyecto (`artifacts/sazon/`). En una terminal:
+
+```bash
+git clone https://github.com/Migueltejada86/sazon-pos.git
+cd sazon-pos
+# copiá index.html, app.js y js/ desde artifacts/sazon
+git add index.html app.js js mozo.html
+git commit -m "Prototipo caja + app mozo"
+git push origin main
+```
 
 ## Qué hay hoy
 
-Un HTML único (`index.html`) con:
-
-- Plano de mesas (Galería, Salón, Patio, Extras, Frente, Pileta)
+- Plano de mesas de El Descanso
 - Abrir mesa → carta → bandeja amarilla → confirmar
-- Ticket 80 mm para Xprinter XP-E200M (no fiscal)
-- Cierre de caja de noche (corte por medio, efectivo contado, diferencia)
-- Abrir caja a la mañana con fondo
-- Persistencia en `localStorage` de este navegador
+- Ticket 80 mm XP-E200M (no fiscal)
+- Cierre de caja de noche + abrir a la mañana con fondo
+- Datos en localStorage de ese navegador
 
-Todavía no hay servidor ni cuentas por local. Dos PCs no ven las mismas mesas.
-
-## Estructura del repo
-
-```
-sazon-pos/
-├── index.html      # caja + backoffice + carta
-├── mozo.html       # entra directo a la app del mozo
-├── .nojekyll       # GitHub Pages sirve el HTML tal cual
-└── README.md
-```
-
-Estructura objetivo cuando suba a DonWeb (no está en Pages):
-
-```
-apps/caja  apps/mozo  apps/cocina  apps/admin
-server/    db/        shared/      deploy/
-```
-
-Un servidor, dos tenants: `descanso` y el local nuevo.
-
-## Uso rápido
-
-1. Abrí la demo de caja.
-2. Mesas → abrir → cargar código (01, 20, 501…) → Confirmar → Ticket y cerrar.
-3. Ícono reportes / Ventas → Arqueos → cierre de noche.
-4. En el celu: `/mozo.html`.
-
-## Stack futuro
-
-Ubuntu + Node + PostgreSQL en Cloud Server DonWeb (Argentina). Pages es solo la maqueta pública.
+Dos PCs todavía no comparten mesas (eso va en DonWeb).
