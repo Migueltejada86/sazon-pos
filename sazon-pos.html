@@ -164,7 +164,8 @@
     .detail { display: flex; flex-direction: column; height: 100%; }
     .detail-h { padding: 14px 16px; border-bottom: 1px solid #ddd; font-weight: 700; }
     .cart { flex: 1; overflow: auto; padding: 12px 16px; }
-    .line { display: grid; grid-template-columns: 36px 1fr auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #e8e8e8; }
+    .line { display: grid; grid-template-columns: 36px 1fr auto; gap: 8px; align-items: start; padding: 8px 0; border-bottom: 1px solid #e8e8e8; }
+    .note-in { width:100%; margin-top:4px; border:1px dashed #ccc; border-radius:4px; padding:5px 8px; font-size:12px; }
     .qty {
       width: 36px; height: 28px; border: 1px solid #ddd; border-radius: 4px; text-align: center;
     }
@@ -919,6 +920,10 @@
               <div><b>${p.n}</b><div class="muted">${money(p.p)} · ${p.c}</div></div>
               <button class="btn btn-light" onclick='addProd(${JSON.stringify(p)});renderMozo()'>+</button>
             </div>`).join("")}
+            ${(state.pending.length||state.cart.length)?`<div class="card"><b>Pedido</b>
+              ${state.pending.map((x,i)=>`<div class="line" style="grid-template-columns:1fr auto"><div>${x.q} ${x.n}<div class="muted">${x.note||"sin comentario"}</div></div><button class="btn btn-light" onclick="notaItem('pending',${i});renderMozo()">Nota</button></div>`).join("")}
+              ${state.cart.map((x,i)=>`<div class="line" style="grid-template-columns:1fr auto"><div>${x.q} ${x.n}<div class="muted">${x.note||"sin comentario"}</div></div><button class="btn btn-light" onclick="notaItem('cart',${i});renderMozo()">Nota</button></div>`).join("")}
+            </div>`:""}
           </div>
           <button class="mozo-fab" onclick="if(state.pending.length)confirmPending();toast(state.cart.length+' ítems');renderMozo()">Continuar ${state.pending.length+state.cart.length}</button>
         `}
@@ -1009,15 +1014,32 @@
 
     function addProd(p){
       if(!state.order) nuevoPedido(state.tab==="express"?"express":"mesa");
-      if(state.tab==="mesas" && state.mesaAbierta){
-        const found = state.pending.find(x=>x.c===p.c);
-        if(found) found.q++; else state.pending.push({...p, q:1, note:""});
-        render(); return;
-      }
-      const found = state.cart.find(x=>x.c===p.c);
-      if(found) found.q++;
-      else state.cart.push({...p, q:1, note:""});
-      syncTotal();
+      const dest = (state.tab==="mesas" && state.mesaAbierta) ? state.pending : state.cart;
+      const last = [...dest].reverse().find(x=>x.c===p.c && !x.note);
+      if(last) last.q++;
+      else dest.push({...p, q:1, note:""});
+      if(dest!==state.pending) syncTotal();
+      render();
+    }
+    function setItemQty(lista, i, q){
+      const arr = lista==="pending" ? state.pending : state.cart;
+      if(!arr[i]) return;
+      arr[i].q = Math.max(0, +q);
+      if(arr[i].q<=0) arr.splice(i,1);
+      if(lista!=="pending") syncTotal();
+      render();
+    }
+    function setItemNote(lista, i, txt){
+      const arr = lista==="pending" ? state.pending : state.cart;
+      if(!arr[i]) return;
+      arr[i].note = txt;
+    }
+    function notaItem(lista, i){
+      const arr = lista==="pending" ? state.pending : state.cart;
+      if(!arr[i]) return;
+      const v = prompt("Comentario para cocina / ticket", arr[i].note||"");
+      if(v===null) return;
+      arr[i].note = v.trim();
       render();
     }
     function confirmPending(){
@@ -1086,7 +1108,7 @@
         <div>Mozo: ${v.mozo}</div>
         <div>${v.start}</div>
         <div class="dash"></div>
-        ${v.items.map(i=>`<div style="display:flex;justify-content:space-between"><span>${i.q} ${i.n}</span><span>${money(i.p*i.q)}</span></div>${i.note?`<div>  ${i.note}</div>`:""}`).join("")}
+        ${v.items.map(i=>`<div style="display:flex;justify-content:space-between"><span>${i.q} ${i.n}</span><span>${money(i.p*i.q)}</span></div>${i.note?`<div>  * ${i.note}</div>`:""}`).join("")}
         <div class="dash"></div>
         <div style="display:flex;justify-content:space-between"><b>TOTAL</b><b>${money(v.total)}</b></div>
         <div>Pago: ${v.medio}</div>
@@ -1139,9 +1161,12 @@
               <button class="btn btn-orange" onclick="go('pos','express')">+</button>
             </div>
             ${state.pending.length? `<div style="background:#f6e27a;border-radius:8px;padding:8px;margin-bottom:8px">
-              ${state.pending.map(x=>`<div class="line">
-                <input class="qty" type="number" min="0" value="${x.q}" onchange="(function(){const it=state.pending.find(i=>i.c==='${x.c}');if(it){it.q=+event.target.value;if(it.q<=0)state.pending=state.pending.filter(i=>i.c!=='${x.c}');render();}})()" />
-                <div>${x.n}<div class="muted">${x.note||""}</div></div>
+              ${state.pending.map((x,i)=>`<div class="line">
+                <input class="qty" type="number" min="0" value="${x.q}" onchange="setItemQty('pending',${i},this.value)" />
+                <div>
+                  <div>${x.n}</div>
+                  <input class="note-in" placeholder="Comentario: sin sal, punto medio…" value="${(x.note||"").replace(/"/g,"&quot;")}" oninput="setItemNote('pending',${i},this.value)" />
+                </div>
                 <b>${money(x.p*x.q)}</b>
               </div>`).join("")}
               <div class="muted">Total a confirmar: ${money(pendT)}</div>
@@ -1150,9 +1175,12 @@
                 <button class="btn btn-orange" onclick="confirmPending()">Confirmar</button>
               </div>
             </div>`:""}
-            ${state.cart.length? state.cart.map(x=>`<div class="line">
-              <input class="qty" type="number" min="0" value="${x.q}" onchange="setQty('${x.c}', this.value)" />
-              <div>${x.n}<div class="muted">${x.note||money(x.p)}</div></div>
+            ${state.cart.length? state.cart.map((x,i)=>`<div class="line">
+              <input class="qty" type="number" min="0" value="${x.q}" onchange="setItemQty('cart',${i},this.value)" />
+              <div>
+                <div>${x.n} <span class="muted">${money(x.p)}</span></div>
+                <input class="note-in" placeholder="Comentario: sin sal, sin cebolla…" value="${(x.note||"").replace(/"/g,"&quot;")}" oninput="setItemNote('cart',${i},this.value)" />
+              </div>
               <b>${money(x.p*x.q)}</b>
             </div>`).join("") : (state.pending.length?"":`<div class="muted" style="padding:16px 0">Sin productos confirmados.</div>`)}
           </div>
